@@ -1,0 +1,10 @@
+config.toml
+config_back/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.log
+*.tmp
+daily_state.json
+state.json

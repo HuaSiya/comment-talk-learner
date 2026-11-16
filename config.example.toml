@@ -1,0 +1,79 @@
+# B站 + 贴吧学说话插件配置示例
+# 复制为 config.toml 后修改；WebUI 插件配置页也可以直接改。
+# 公共设置放 [plugin]；B站抓取参数放 [sources]；贴吧参数放 [tieba]。
+
+[plugin]
+config_version = "1.0.0"
+enabled = true
+write_to_db = true
+daily_enabled = true
+daily_hour = 4
+daily_minute = 30
+jitter_minutes = 20
+run_on_start_if_missed = true
+
+max_expressions_per_day = 8
+max_total_imported = 800
+
+min_confidence = 0.6
+review_enabled = true
+review_min_score = 0.65
+
+llm_task = "learner"
+llm_fallback_task = "utils"
+llm_batch_size = 40
+llm_timeout_seconds = 180
+max_candidates_per_call = 4
+
+seen_video_ttl_days = 14
+max_retries_per_day = 2
+retry_interval_minutes = 30
+command_cooldown_seconds = 300
+
+banned_words = []
+admin_users = []
+
+[sources]
+popular_enabled = true
+popular_pages = 1
+zone_rids = []
+keywords = []
+up_uids = []
+bvids = []
+per_source_limit = 5
+max_video_age_days = 30
+
+max_videos_per_run = 6
+max_comments_per_video = 40
+include_sub_replies = true
+sub_reply_roots = 3
+sub_replies_per_root = 20
+min_reply_count = 50
+min_comment_chars = 4
+max_comment_chars = 120
+rate_limit_seconds = 1.5
+request_timeout = 20.0
+max_request_retries = 2
+sessdata = ""
+
+[tieba]
+enabled = true
+bars = ["生活吧"]
+max_bars = 10
+keywords = []
+scan_pages = 2
+max_threads = 0
+threads_per_bar = 2
+thread_pages = 1
+min_replies = 30
+max_posts_per_thread = 30
+min_post_chars = 6
+max_post_chars = 300
+include_op = false
+exclude_title = "水楼|签到|吧规|公告|广告|交易|招聘|投诉|申精|回复"
+rate_limit_seconds = 2.0
+request_timeout = 20.0
+max_request_retries = 2
+cookie = ""
+proxy = ""
+transport = "auto"
