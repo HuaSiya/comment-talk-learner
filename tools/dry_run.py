@@ -1,8 +1,7 @@
 """只抓取、不写库的调试脚本。
 
-用法（在 MaiBot 容器里跑，避免宿主机 Python 版本过旧）：
-    docker exec -i maim-bot-core python /MaiMBot/plugins/comment-talk-learner/tools/dry_run.py \
-        --videos 2 --comments 20
+用法（在 MaiBot 运行环境/容器里跑，避免宿主机 Python 版本过旧）：
+    python tools/dry_run.py --videos 2 --comments 20
 
 默认取全站热门；也可以指定 BV：
     ... --bvids BV1xx411c7mD BV1yy411c7mE
@@ -17,7 +16,7 @@ import sys
 import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-PACKAGE = "comment_talk_learner"
+PACKAGE = "local_bilibili_comment_learner"
 
 
 def load_package():
@@ -59,8 +58,8 @@ def main() -> int:
     args = parser.parse_args()
 
     load_package()
-    from comment_talk_learner.bili import BiliClient, BiliError  # noqa: E402
-    from comment_talk_learner.extract import (  # noqa: E402
+    from local_bilibili_comment_learner.bili import BiliClient, BiliError  # noqa: E402
+    from local_bilibili_comment_learner.extract import (  # noqa: E402
         build_extract_prompt,
         prepare_comments,
     )
@@ -68,13 +67,17 @@ def main() -> int:
     config = read_config(pathlib.Path(args.config))
     plugin_cfg = config.get("plugin", {}) if isinstance(config, dict) else {}
     sources_cfg = config.get("sources", {}) if isinstance(config, dict) else {}
-    rate_limit = args.rate_limit if args.rate_limit is not None else float(plugin_cfg.get("rate_limit_seconds", 1.5))
-    sessdata = args.sessdata or str(plugin_cfg.get("sessdata") or "")
+    rate_limit = (
+        args.rate_limit
+        if args.rate_limit is not None
+        else float(sources_cfg.get("rate_limit_seconds", plugin_cfg.get("rate_limit_seconds", 1.5)))
+    )
+    sessdata = args.sessdata or str(sources_cfg.get("sessdata") or plugin_cfg.get("sessdata") or "")
     client = BiliClient(
         rate_limit=rate_limit,
         sessdata=sessdata,
-        timeout=float(plugin_cfg.get("request_timeout", 20.0)),
-        max_retries=int(plugin_cfg.get("max_request_retries", 2)),
+        timeout=float(sources_cfg.get("request_timeout", plugin_cfg.get("request_timeout", 20.0))),
+        max_retries=int(sources_cfg.get("max_request_retries", plugin_cfg.get("max_request_retries", 2))),
     )
 
     videos = []
@@ -95,6 +98,8 @@ def main() -> int:
     comments = []
     comments_by_id = {}
     seen = set()
+    seen_norms: list[str] = []
+    blocked_users: set[str] = set()
     next_id = 1
     pages = max(1, (args.comments + 19) // 20)
     for video in videos:
@@ -102,25 +107,43 @@ def main() -> int:
         print(f"\n=== {bvid} | {video.get('title', '')[:50]} | 评论 {video.get('reply', 0)} ===")
         try:
             info = client.video_info(bvid)
-            raw = client.comments(int(info.get("aid") or 0), pages=pages, page_size=20)
+            raw = client.comments(
+                int(info.get("aid") or 0),
+                pages=pages,
+                page_size=20,
+                include_sub_replies=bool(sources_cfg.get("include_sub_replies", True)),
+                sub_reply_roots=int(sources_cfg.get("sub_reply_roots", 3)),
+                sub_replies_per_root=int(sources_cfg.get("sub_replies_per_root", 20)),
+            )
         except BiliError as exc:
             print(f"  读取失败：{exc}")
             continue
+        stats: dict[str, int] = {}
         prepared, next_id = prepare_comments(
             raw,
             source=bvid,
             start_id=next_id,
-            min_chars=int(plugin_cfg.get("min_comment_chars", 4)),
-            max_chars=int(plugin_cfg.get("max_comment_chars", 120)),
+            min_chars=int(sources_cfg.get("min_comment_chars", 4)),
+            max_chars=int(sources_cfg.get("max_comment_chars", 120)),
             banned_words=plugin_cfg.get("banned_words") or [],
             seen_keys=seen,
+            formulaic_filter=bool(sources_cfg.get("formulaic_filter", True)),
+            reaction_keep_ratio=float(sources_cfg.get("reaction_keep_ratio", 0.08)),
+            ai_bot_threshold=int(sources_cfg.get("ai_bot_threshold", 60)),
+            near_dedup=bool(sources_cfg.get("formulaic_filter", True)),
+            seen_norms=seen_norms,
+            blocked_users=blocked_users,
+            filter_stats=stats,
         )
         prepared = prepared[: args.comments]
         next_id = (prepared[-1]["id"] + 1) if prepared else next_id
+        if stats:
+            summary = "；".join(f"{reason} {count}" for reason, count in sorted(stats.items(), key=lambda pair: -pair[1])[:5])
+            print(f"  过滤统计：{summary}")
         for item in prepared:
             comments.append(item)
             comments_by_id[item["id"]] = item["text"]
-            print(f"  [{item['id']}] {item['text']}")
+            print(f"  [{item['id']}] (q={item.get('quality', 0)}) {item['text']}")
         time.sleep(min(rate_limit, 1.5))
 
     print(f"\n共 {len(videos)} 个视频，保留 {len(comments)} 条评论。")

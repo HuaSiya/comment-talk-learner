@@ -6,7 +6,7 @@ from _helpers import load_package
 
 load_package()
 
-from comment_talk_learner.bili import (  # noqa: E402
+from local_bilibili_comment_learner.bili import (  # noqa: E402
     BiliClient,
     BiliError,
     merge_video_lists,

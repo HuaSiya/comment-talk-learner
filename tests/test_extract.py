@@ -6,7 +6,7 @@ from _helpers import load_package
 
 load_package()
 
-from comment_talk_learner.extract import (  # noqa: E402
+from local_bilibili_comment_learner.extract import (  # noqa: E402
     build_extract_prompt,
     build_review_prompt,
     is_meaningful_comment,

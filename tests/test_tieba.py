@@ -7,7 +7,7 @@ from _helpers import load_package
 
 load_package()
 
-from comment_talk_learner.tieba import (  # noqa: E402
+from local_bilibili_comment_learner.tieba import (  # noqa: E402
     TiebaClient,
     normalize_bar,
     normalize_post,
@@ -190,6 +190,14 @@ class SelectThreadsTests(unittest.TestCase):
     def test_limit(self):
         selected = select_threads(self.threads, seen=set(), min_replies=0, max_threads=1)
         self.assertEqual(len(selected), 1)
+
+    def test_min_replies_is_strict(self):
+        threads = [
+            {"tid": "1", "title": "正好30", "abstract": "", "reply_num": 30},
+            {"tid": "2", "title": "31条", "abstract": "", "reply_num": 31},
+        ]
+        selected = select_threads(threads, seen=set(), min_replies=30, max_threads=10)
+        self.assertEqual([item["tid"] for item in selected], ["2"])
 
 
 if __name__ == "__main__":

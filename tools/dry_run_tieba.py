@@ -1,8 +1,7 @@
 """只抓贴吧、不写库的调试脚本。
 
-用法（在 MaiBot 容器里跑）：
-    docker exec -i maim-bot-core python /MaiMBot/plugins/comment-talk-learner/tools/dry_run_tieba.py \
-        --bar 生活吧 --threads 2 --posts 20
+用法（在 MaiBot 运行环境/容器里跑）：
+    python tools/dry_run_tieba.py --bar 生活吧 --threads 2 --posts 20
 """
 from __future__ import annotations
 
@@ -12,7 +11,7 @@ import pathlib
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-PACKAGE = "comment_talk_learner"
+PACKAGE = "local_bilibili_comment_learner"
 
 
 def load_package():
@@ -54,8 +53,8 @@ def main() -> int:
     args = parser.parse_args()
 
     load_package()
-    from comment_talk_learner.extract import prepare_comments
-    from comment_talk_learner.tieba import TiebaClient, TiebaError, select_threads
+    from local_bilibili_comment_learner.extract import prepare_comments
+    from local_bilibili_comment_learner.tieba import TiebaClient, TiebaError, select_threads
 
     config = read_config(pathlib.Path(args.config))
     tieba_cfg = config.get("tieba", {}) if isinstance(config, dict) else {}

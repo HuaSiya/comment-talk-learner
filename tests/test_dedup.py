@@ -6,7 +6,7 @@ from _helpers import load_package
 
 load_package()
 
-from comment_talk_learner.dedup import (  # noqa: E402
+from local_bilibili_comment_learner.dedup import (  # noqa: E402
     is_bad_style,
     is_duplicate,
     normalize_for_match,
@@ -71,6 +71,10 @@ class BadStyleTests(unittest.TestCase):
 
     def test_normal_style_kept(self):
         self.assertFalse(is_bad_style("用「不是，哥们」开头接一句吐槽")[0])
+
+    def test_formulaic_style_rejected(self):
+        self.assertTrue(is_bad_style("用「火钳刘明」抢前排")[0])
+        self.assertTrue(is_bad_style("用「下次一定」敷衍三连")[0])
 
     def test_too_long_rejected(self):
         self.assertTrue(is_bad_style("用" * 100, max_chars=60)[0])

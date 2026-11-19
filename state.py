@@ -59,6 +59,14 @@ def _merge_defaults(state: dict[str, Any]) -> dict[str, Any]:
             }
         elif key == "imported" and isinstance(value, dict):
             merged["imported"] = {str(k): v for k, v in value.items() if isinstance(v, dict)}
+        elif (
+            isinstance(merged[key], (int, float))
+            and not isinstance(merged[key], bool)
+            and isinstance(value, (int, float))
+            and not isinstance(value, bool)
+        ):
+            # 时间戳会以 float 写入，默认值可能是 int；数值类型之间允许互换。
+            merged[key] = value
         elif key in merged and not isinstance(value, type(merged[key])) and merged[key] is not None:
             # 类型不匹配时保留默认值，避免坏状态把插件带崩。
             logger.warning("状态字段 %s 类型异常，已使用默认值", key)

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import time
 import unittest
 from unittest.mock import AsyncMock
 
@@ -10,12 +12,12 @@ load_package()
 
 from maibot_sdk.context import PluginContext  # noqa: E402
 
-from comment_talk_learner.plugin import (  # noqa: E402
+from local_bilibili_comment_learner.plugin import (  # noqa: E402
     BilibiliCommentLearner,
     CommentLearnerConfig,
 )
-from comment_talk_learner.state import default_state  # noqa: E402
-from comment_talk_learner.tieba import TiebaError  # noqa: E402
+from local_bilibili_comment_learner.state import default_state, record_imported  # noqa: E402
+from local_bilibili_comment_learner.tieba import TiebaError  # noqa: E402
 
 
 class FakeTieba:
@@ -33,6 +35,9 @@ class FakeTieba:
                 {"content": "这也太离谱了吧，我真服了", "is_op": False, "agree": 5},
                 {"content": "[图片]", "is_op": False, "agree": 0},
                 {"content": "不是，哥们，这也能行？", "is_op": False, "agree": 2},
+                {"content": "我昨天也遇到类似的事", "is_op": False, "agree": 4},
+                {"content": "换我我肯定不敢这么干", "is_op": False, "agree": 3},
+                {"content": "他后来怎么样了，有人知道吗", "is_op": False, "agree": 1},
             ]
         }
 
@@ -43,6 +48,21 @@ class FailingTieba:
 
     def thread(self, tid, *, pages=1, limit=30):
         raise TiebaError("should not be called")
+
+
+class ShortTieba:
+    def bar_threads(self, bar, *, pages=2, limit=30):
+        return [{"tid": "short1", "title": "楼层不够", "reply_num": 80, "abstract": ""}]
+
+    def thread(self, tid, *, pages=1, limit=30):
+        return {
+            "posts": [
+                {"content": "这也太离谱了吧，我真服了", "is_op": False, "agree": 5},
+                {"content": "不是，哥们，这也能行？", "is_op": False, "agree": 2},
+                {"content": "我昨天也遇到类似的事", "is_op": False, "agree": 4},
+                {"content": "换我我肯定不敢这么干", "is_op": False, "agree": 3},
+            ]
+        }
 
 
 class MultiBarFake:
@@ -58,7 +78,12 @@ class MultiBarFake:
     def thread(self, tid, *, pages=1, limit=30):
         return {
             "posts": [
-                {"content": f"{tid} 的回复内容，这也太离谱了吧", "is_op": False, "agree": 3},
+                {
+                    "content": f"{tid} 的回复内容第{i}条，这也太离谱了吧",
+                    "is_op": False,
+                    "agree": 3,
+                }
+                for i in range(5)
             ]
         }
 
@@ -72,6 +97,7 @@ class SchemaLocalizationTests(unittest.TestCase):
         )
         fields = schema["sections"]["plugin"]["fields"]
         self.assertEqual(fields["enabled"]["label"], "启用插件")
+        self.assertIsNone(fields["max_expressions_per_day"]["max"])
         self.assertEqual(fields["llm_task"]["label"], "分析模型任务")
         self.assertEqual(fields["llm_task"]["ui_type"], "select")
         self.assertIn("learner", fields["llm_task"]["options"])
@@ -82,9 +108,21 @@ class SchemaLocalizationTests(unittest.TestCase):
         sources = schema["sections"]["sources"]["fields"]
         self.assertEqual(sources["sessdata"]["label"], "B站 SESSDATA")
         self.assertEqual(sources["rate_limit_seconds"]["label"], "B站请求间隔（秒）")
+        self.assertEqual(sources["formulaic_filter"]["label"], "严格过滤公式化评论")
+        self.assertIn("公式化", sources["formulaic_filter"]["hint"])
+        self.assertEqual(sources["max_comments_per_video"]["label"], "每视频有效评论数")
+        self.assertIn("跳过", sources["max_comments_per_video"]["hint"])
+        self.assertIn("51", sources["min_reply_count"]["hint"])
+        self.assertEqual(sources["reaction_keep_ratio"]["label"], "纯反应保留比例")
+        self.assertIn("8%", sources["reaction_keep_ratio"]["hint"])
+        self.assertEqual(sources["ai_bot_threshold"]["label"], "AI/Bot 判定分数")
+        self.assertIn("60", sources["ai_bot_threshold"]["hint"])
         tieba = schema["sections"]["tieba"]["fields"]
         self.assertEqual(tieba["enabled"]["label"], "启用贴吧来源")
-        self.assertEqual(tieba["threads_per_bar"]["label"], "每吧帖子数")
+        self.assertEqual(tieba["threads_per_bar"]["label"], "每吧达标帖子数")
+        self.assertEqual(tieba["quality_filter"]["label"], "严格过滤公式化楼层")
+        self.assertEqual(tieba["max_posts_per_thread"]["label"], "每帖有效楼层数")
+        self.assertIn("51", tieba["min_replies"]["hint"])
 
 
 class ConfigMigrationTests(unittest.TestCase):
@@ -123,10 +161,10 @@ class TiebaCollectionTests(unittest.IsolatedAsyncioTestCase):
                     "enabled": True,
                     "bars": ["弱智吧"],
                     "scan_pages": 1,
-                    "max_threads": 2,
+                    "max_threads": 1,
                     "thread_pages": 1,
                     "min_replies": 10,
-                    "max_posts_per_thread": 30,
+                    "max_posts_per_thread": 5,
                     "min_post_chars": 6,
                     "max_post_chars": 300,
                     "include_op": False,
@@ -141,12 +179,21 @@ class TiebaCollectionTests(unittest.IsolatedAsyncioTestCase):
         comments, by_id, processed, next_id, warnings = await plugin._collect_tieba(
             FakeTieba(), plugin.config.tieba, start_id=5
         )
-        self.assertEqual([item["text"] for item in comments], ["这也太离谱了吧，我真服了", "不是，哥们，这也能行？"])
-        self.assertEqual([item["id"] for item in comments], [5, 6])
+        self.assertCountEqual(
+            [item["text"] for item in comments],
+            [
+                "这也太离谱了吧，我真服了",
+                "不是，哥们，这也能行？",
+                "我昨天也遇到类似的事",
+                "换我我肯定不敢这么干",
+                "他后来怎么样了，有人知道吗",
+            ],
+        )
+        self.assertCountEqual([item["id"] for item in comments], [5, 6, 7, 8, 9])
         self.assertEqual(by_id[5], "这也太离谱了吧，我真服了")
         self.assertEqual(processed, ["123456"])
-        self.assertEqual(next_id, 7)
-        self.assertEqual(warnings, [])
+        self.assertEqual(next_id, 10)
+        self.assertFalse(any("达标帖子" in item for item in warnings))
 
     async def test_risk_control_is_warning_not_crash(self):
         plugin = self.make_plugin()
@@ -157,6 +204,18 @@ class TiebaCollectionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(by_id, {})
         self.assertEqual(processed, [])
         self.assertTrue(any("110001" in item for item in warnings))
+
+    async def test_thread_with_too_few_valid_posts_is_skipped(self):
+        plugin = self.make_plugin()
+        comments, by_id, processed, next_id, warnings = await plugin._collect_tieba(
+            ShortTieba(), plugin.config.tieba, start_id=1
+        )
+        self.assertEqual(comments, [])
+        self.assertEqual(by_id, {})
+        self.assertEqual(processed, [])
+        self.assertEqual(next_id, 1)
+        self.assertTrue(any("有效楼层 4/5" in item for item in warnings))
+        self.assertTrue(any("贴吧达标帖子 0/1" in item for item in warnings))
 
     async def test_threads_per_bar_quota(self):
         plugin = self.make_plugin()
@@ -173,7 +232,7 @@ class TiebaCollectionTests(unittest.IsolatedAsyncioTestCase):
                     "threads_per_bar": 1,
                     "thread_pages": 1,
                     "min_replies": 10,
-                    "max_posts_per_thread": 30,
+                    "max_posts_per_thread": 5,
                     "min_post_chars": 6,
                     "max_post_chars": 300,
                     "include_op": False,
@@ -188,6 +247,98 @@ class TiebaCollectionTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any(tid.startswith("1") for tid in processed))
         self.assertTrue(any(tid.startswith("2") for tid in processed))
         self.assertEqual(warnings, [])
+
+
+class FakeBili:
+    NORMAL = [
+        "这也太离谱了吧，我今天第一次见",
+        "不是，哥们，这也行？",
+        "这个视频的BGM是什么，挺好听",
+        "我昨天在店里也遇到类似的事",
+        "说实话这个处理方式有点意思",
+        "换我我肯定不敢这么干",
+        "老板这波操作我是真没想到",
+        "他后来怎么样了，有人知道吗",
+        "这事要是我妈知道了肯定得念叨",
+        "评论区有没有懂行的说说",
+    ]
+
+    def comments(self, aid, **kwargs):
+        return [
+            {"message": "火钳刘明", "like": 100},
+            {"message": "前排打卡", "like": 90},
+            {"message": "下次一定", "like": 85},
+            {"message": "哈哈哈哈", "like": 60},
+            *[{"message": text, "like": 10} for text in self.NORMAL],
+        ]
+
+
+class BiliCollectionQualityTests(unittest.IsolatedAsyncioTestCase):
+    async def test_collection_filters_formulaic_comments(self):
+        plugin = BilibiliCommentLearner()
+        plugin.set_plugin_config(
+            {
+                "plugin": {"config_version": "1.0.0"},
+                "sources": {
+                    "config_version": "1.0.0",
+                    "formulaic_filter": True,
+                    "reaction_keep_ratio": 0.0,
+                    "ai_bot_threshold": 60,
+                    "max_comments_per_video": 10,
+                    "include_sub_replies": False,
+                    "min_comment_chars": 4,
+                    "max_comment_chars": 120,
+                },
+                "tieba": {},
+            }
+        )
+        plugin._state = default_state()
+        comments, by_id, processed, next_id, warnings = await plugin._collect_comments(
+            FakeBili(),
+            [{"bvid": "BV1", "aid": 1, "reply": 100}],
+            plugin.config.sources,
+        )
+        self.assertCountEqual([item["text"] for item in comments], FakeBili.NORMAL)
+        self.assertEqual(processed, ["BV1"])
+        self.assertEqual(next_id, 11)
+        self.assertEqual(len(by_id), 10)
+        self.assertTrue(any("B站质量过滤" in item for item in warnings))
+
+    async def test_video_with_too_few_valid_comments_is_skipped(self):
+        plugin = BilibiliCommentLearner()
+        plugin.set_plugin_config(
+            {
+                "plugin": {"config_version": "1.0.0"},
+                "sources": {
+                    "config_version": "1.0.0",
+                    "formulaic_filter": True,
+                    "reaction_keep_ratio": 0.0,
+                    "ai_bot_threshold": 60,
+                    "max_comments_per_video": 11,
+                    "include_sub_replies": False,
+                    "min_comment_chars": 4,
+                    "max_comment_chars": 120,
+                },
+                "tieba": {},
+            }
+        )
+        plugin._state = default_state()
+        comments, by_id, processed, next_id, warnings = await plugin._collect_comments(
+            FakeBili(),
+            [{"bvid": "BV1", "aid": 1, "reply": 100}],
+            plugin.config.sources,
+        )
+        self.assertEqual(comments, [])
+        self.assertEqual(by_id, {})
+        self.assertEqual(processed, [])
+        self.assertEqual(next_id, 1)
+        self.assertTrue(any("有效评论 10/11" in item for item in warnings))
+        self.assertTrue(any("B站达标视频 0/6" in item for item in warnings))
+
+    def test_reply_count_boundary(self):
+        self.assertFalse(BilibiliCommentLearner._reply_count_ok(50, 50))
+        self.assertTrue(BilibiliCommentLearner._reply_count_ok(51, 50))
+        self.assertFalse(BilibiliCommentLearner._reply_count_ok(None, 50))
 
 
 class LLMTimeoutTests(unittest.IsolatedAsyncioTestCase):
@@ -250,6 +401,58 @@ class LLMTimeoutTests(unittest.IsolatedAsyncioTestCase):
             timeout_ms=180000,
         )
         self.assertEqual(captured["timeout_ms"], 180000)
+
+
+class QuotaGuardTests(unittest.IsolatedAsyncioTestCase):
+    def test_zero_daily_limit_means_unlimited(self):
+        plugin = BilibiliCommentLearner()
+        plugin.set_plugin_config(
+            {
+                "plugin": {
+                    "config_version": "1.0.0",
+                    "max_expressions_per_day": 0,
+                    "max_total_imported": 100,
+                },
+                "sources": {},
+                "tieba": {},
+            }
+        )
+        plugin._state = default_state()
+        for index in range(5):
+            record_imported(plugin._state, expression_id=index, situation="情境", style="表达", now_ts=time.time())
+        selected, skipped, _warning = plugin._dedup_and_quota(
+            [
+                {"situation": "情境A", "style": "用短句吐槽"},
+                {"situation": "情境B", "style": "用反问接话"},
+                {"situation": "情境C", "style": "先自嘲再收尾"},
+            ],
+            [],
+            plugin.config.plugin,
+        )
+        self.assertEqual(len(selected), 3)
+        self.assertEqual(skipped, 0)
+
+    async def test_skips_before_fetch_when_daily_quota_used(self):
+        plugin = BilibiliCommentLearner()
+        plugin.set_plugin_config(
+            {
+                "plugin": {
+                    "config_version": "1.0.0",
+                    "max_expressions_per_day": 1,
+                    "write_to_db": True,
+                },
+                "sources": {},
+                "tieba": {},
+            }
+        )
+        plugin._lock = asyncio.Lock()
+        plugin._state = default_state()
+        record_imported(plugin._state, expression_id=1, situation="情境", style="表达", now_ts=time.time())
+        plugin._run_once = AsyncMock()
+        result = await plugin._run_guarded(trigger="manual")
+        self.assertEqual(result["status"], "quota_exhausted")
+        plugin._run_once.assert_not_awaited()
+        self.assertIn("今日配额已用完", result["warnings"][0])
 
 
 if __name__ == "__main__":

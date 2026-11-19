@@ -6,7 +6,7 @@ import pathlib
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-PACKAGE_NAME = "comment_talk_learner"
+PACKAGE_NAME = "local_bilibili_comment_learner"
 
 
 def load_package():

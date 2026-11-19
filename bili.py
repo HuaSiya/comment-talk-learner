@@ -207,8 +207,10 @@ class BiliClient:
         owner = item.get("owner")
         if isinstance(owner, dict):
             owner_name = _as_str(owner.get("name"))
+            owner_mid = _as_int(owner.get("mid"))
         else:
             owner_name = _as_str(item.get("author") or item.get("owner"))
+            owner_mid = 0
 
         stat = item.get("stat") if isinstance(item.get("stat"), dict) else {}
         title = _EM_TAG_RE.sub("", _as_str(item.get("title"))).strip()
@@ -227,6 +229,7 @@ class BiliClient:
             "aid": _as_int(item.get("aid")),
             "title": title,
             "owner": owner_name,
+            "owner_mid": owner_mid,
             "view": _as_int(stat.get("view") or item.get("play")),
             "reply": _as_int(stat.get("reply") or item.get("review") or item.get("video_review")),
             "pubdate": _as_int(item.get("pubdate") or item.get("created")),
@@ -313,6 +316,7 @@ class BiliClient:
             "aid": _as_int(data.get("aid")),
             "title": _as_str(data.get("title")),
             "owner": _as_str(owner.get("name")),
+            "owner_mid": _as_int(owner.get("mid")),
             "view": _as_int(stat.get("view")),
             "reply": _as_int(stat.get("reply")),
             "pubdate": _as_int(data.get("pubdate")),
@@ -324,7 +328,7 @@ class BiliClient:
     # ---------------- 评论 ----------------
 
     @staticmethod
-    def _parse_comment(item: Any) -> dict[str, Any] | None:
+    def _parse_comment(item: Any, *, owner_mid: int = 0) -> dict[str, Any] | None:
         if not isinstance(item, dict):
             return None
         content = item.get("content") if isinstance(item.get("content"), dict) else {}
@@ -332,12 +336,23 @@ class BiliClient:
         message = _as_str(content.get("message")).strip()
         if not message:
             return None
+        level_info = member.get("level_info") if isinstance(member.get("level_info"), dict) else {}
+        vip = member.get("vip") if isinstance(member.get("vip"), dict) else {}
+        mid = _as_int(member.get("mid"))
         return {
             "rpid": _as_int(item.get("rpid")),
+            "root": _as_int(item.get("root")),
+            "parent": _as_int(item.get("parent")),
             "message": message,
             "like": _as_int(item.get("like")),
             "ctime": _as_int(item.get("ctime")),
             "user": _as_str(member.get("uname")),
+            "mid": mid,
+            "level": _as_int(level_info.get("current_level")),
+            "sign": _as_str(member.get("sign")),
+            "avatar": _as_str(member.get("avatar")),
+            "vip": _as_int(vip.get("vipStatus")),
+            "is_up": bool(owner_mid and mid == int(owner_mid)),
             "rcount": _as_int(item.get("rcount")),
         }
 
@@ -350,6 +365,7 @@ class BiliClient:
         include_sub_replies: bool = True,
         sub_reply_roots: int = 3,
         sub_replies_per_root: int = 20,
+        owner_mid: int = 0,
     ) -> list[dict[str, Any]]:
         """按热度取评论；可选附带楼中楼。
 
@@ -375,7 +391,7 @@ class BiliClient:
             if not isinstance(replies, list):
                 break
             for raw in replies:
-                parsed = self._parse_comment(raw)
+                parsed = self._parse_comment(raw, owner_mid=owner_mid)
                 if not parsed:
                     continue
                 rpid = parsed["rpid"]
@@ -418,7 +434,7 @@ class BiliClient:
                 if not isinstance(replies, list):
                     continue
                 for raw in replies[: int(sub_replies_per_root)]:
-                    parsed = self._parse_comment(raw)
+                    parsed = self._parse_comment(raw, owner_mid=owner_mid)
                     if not parsed:
                         continue
                     rpid = parsed["rpid"]

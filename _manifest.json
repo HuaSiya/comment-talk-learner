@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "id": "github.husiya.comment-talk-learner",
-  "version": "0.2.5",
+  "version": "0.3.2",
   "name": "B站+贴吧学说话 / Comment Talk Learner",
   "description": "每天从B站热门/指定来源的评论区与百度贴吧楼层提取真人说话方式，去重过滤后写入麦麦的表达方式库，让麦麦的日常回复更像群友。",
   "author": {
@@ -22,7 +22,7 @@
   },
   "sdk": {
     "min_version": "2.19.0",
-    "max_version": "2.19.99"
+    "max_version": "2.20.99"
   },
   "changelog": "CHANGELOG.md",
   "dependencies": [],

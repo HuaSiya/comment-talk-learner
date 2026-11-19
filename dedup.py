@@ -6,6 +6,8 @@ import unicodedata
 from difflib import SequenceMatcher
 from typing import Any, Iterable
 
+from .quality import is_formulaic_expression
+
 # 表达学习 prompt 里的示例，模型有时会原样抄回来
 PROMPT_EXAMPLE_STYLES = frozenset({"我嘞个xxxx", "对对对", "这么强！"})
 
@@ -115,4 +117,7 @@ def is_bad_style(style: str, *, max_chars: int = 80) -> tuple[bool, str]:
         return True, "表达只有标点或表情"
     if re.fullmatch(r"(?:哈|笑死|6|啊|草|awsl|xswl|牛|确实|支持|好耶|赞|顶)+", compact):
         return True, "过于通用的语气词"
+    formulaic, reason = is_formulaic_expression(normalized)
+    if formulaic:
+        return True, reason
     return False, ""

@@ -104,13 +104,16 @@ _CN_FIELD_LABELS = {
     "per_source_limit": "每个来源候选数",
     "max_video_age_days": "视频最大天数",
     "max_videos_per_run": "每轮视频上限",
-    "max_comments_per_video": "每视频评论上限",
+    "max_comments_per_video": "每视频有效评论数",
     "include_sub_replies": "抓取楼中楼",
     "sub_reply_roots": "展开楼中楼根数",
     "sub_replies_per_root": "每条根评论回复数",
     "min_reply_count": "视频评论数下限",
     "min_comment_chars": "评论最短字数",
     "max_comment_chars": "评论最长字数",
+    "formulaic_filter": "严格过滤公式化评论",
+    "reaction_keep_ratio": "纯反应保留比例",
+    "ai_bot_threshold": "AI/Bot 判定分数",
     "rate_limit_seconds": "请求间隔（秒）",
     "request_timeout": "请求超时（秒）",
     "max_request_retries": "请求重试次数",
@@ -118,11 +121,12 @@ _CN_FIELD_LABELS = {
     "bars": "贴吧列表",
     "max_bars": "每轮最多吧数",
     "scan_pages": "吧帖扫描页数",
-    "max_threads": "帖子总数上限",
-    "threads_per_bar": "每吧帖子数",
+    "max_threads": "达标帖子总数",
+    "threads_per_bar": "每吧达标帖子数",
     "thread_pages": "每帖楼层页数",
     "min_replies": "帖子回复数下限",
-    "max_posts_per_thread": "每帖楼层上限",
+    "max_posts_per_thread": "每帖有效楼层数",
+    "quality_filter": "严格过滤公式化楼层",
     "min_post_chars": "楼层最短字数",
     "max_post_chars": "楼层最长字数",
     "include_op": "包含楼主首楼",
@@ -139,7 +143,7 @@ _CN_FIELD_DESCRIPTIONS = {
     "daily_minute": "每天几分开始自动学习（0-59）。",
     "jitter_minutes": "在计划时间后随机延迟多少分钟，避免固定时间请求。",
     "run_on_start_if_missed": "启动时如果已过当天计划时间且今天没成功，是否补跑一次。",
-    "max_expressions_per_day": "每天最多写入多少条新表达，定时和手动轮次累计计算。",
+    "max_expressions_per_day": "每天最多写入多少条新表达，定时和手动轮次累计计算；0 表示不限制，可填任意正整数。",
     "max_total_imported": "本插件累计最多写入多少条，达到后停止自动写入。",
     "min_confidence": "模型给候选的置信度低于该值就丢弃。",
     "review_enabled": "抽取后再让模型判断一次是否可复用、是否冒犯。",
@@ -157,20 +161,26 @@ _CN_FIELD_DESCRIPTIONS = {
     "admin_users": "允许执行 /学说话回滚 的用户 ID；留空禁用回滚。",
     "popular_enabled": "从 B站全站热门视频的评论区取样。",
     "popular_pages": "热门列表取几页，每页约 20 个视频。",
-    "max_videos_per_run": "每轮最多处理几个 B站视频，越多越慢。",
-    "max_comments_per_video": "每个视频最多取多少条评论（含楼中楼）。",
+    "max_videos_per_run": "每轮最多保留几个达标视频；某个视频有效评论不足时会跳过并继续找下一个。",
+    "max_comments_per_video": "过滤后每个视频至少要保留多少条有效评论；不足则跳过该视频，达标视频最多保留这么多条。",
     "include_sub_replies": "同时读取热门评论下的楼中楼，样本更接近日常接话。",
     "sub_reply_roots": "每个视频最多展开几条热门评论的楼中楼。",
     "sub_replies_per_root": "每条热门评论最多取多少条楼中楼回复。",
-    "min_reply_count": "视频评论数低于该值不取样。",
+    "min_reply_count": "视频评论数必须大于该值才取样；设为 50 表示 51 条及以上才参与。",
+    "formulaic_filter": "过滤B站评论区常见的公式化套话、捧场、打卡、玩梗、标题党、复读和无意义评论；默认开启，建议保持开启。",
+    "reaction_keep_ratio": "纯反应评论（草/笑死/awsl/666/太强了等）按比例少量保留，默认 8%；0 表示全部丢弃。",
+    "ai_bot_threshold": "账号特征（等级/头像/签名/用户名）加文本模板的 AI/Bot 风险分达到该值就丢弃；默认 60，调低更严格。",
     "rate_limit_seconds": "B站请求间隔，太小容易触发风控。",
     "request_timeout": "单次 B站请求的超时时间。",
     "max_request_retries": "B站请求遇到网络错误/5xx 时的重试次数。",
     "sessdata": "可选 B站登录 Cookie，建议小号；环境变量 BILI_SESSDATA 优先。",
-    "bars": "要学习的贴吧，按列表顺序处理，名称会自动补“吧”。",
+    "bars": "要学习的贴吧，按列表顺序处理，名称会自动补「吧」。",
     "max_bars": "每轮最多处理列表里的前几个吧，超出的本轮忽略。",
-    "threads_per_bar": "每个吧最多读几个帖子，各吧独立计算。",
-    "max_threads": "贴吧总帖子数硬上限；0 表示只受每吧配额限制。",
+    "quality_filter": "过滤贴吧楼层里的公式化套话、玩梗、广告、AI 元讨论和无意义内容；默认开启。",
+    "threads_per_bar": "每个吧最多保留几个达标帖子；楼层不足的帖子会跳过并继续找下一个。",
+    "max_threads": "本轮最多保留几个达标帖子；0 表示由每吧达标帖子数 × 吧数决定。",
+    "min_replies": "帖子回复数必须大于该值才读；设为 50 表示 51 条及以上才参与。",
+    "max_posts_per_thread": "过滤后每个帖子至少要保留多少条有效楼层；不足则跳过该帖。建议比帖子回复数下限低 5-10 层，否则过滤后很难达标。",
     "transport": "auto=客户端接口失败自动切移动网页；web 需要 Cookie。",
     "cookie": "贴吧登录 Cookie（BAIDUID/BDUSS/STOKEN），建议小号。",
 }
@@ -287,9 +297,8 @@ class PluginSection(PluginConfigBase):
     )
     max_expressions_per_day: int = Field(
         default=8,
-        ge=1,
-        le=30,
-        description="每天最多新增多少条表达（跨轮累计，达到后当天不再写入）。",
+        ge=0,
+        description="每天最多新增多少条表达（跨轮累计）；0 表示不限制，也可填任意正整数。",
     )
     max_total_imported: int = Field(
         default=800,
@@ -417,7 +426,7 @@ class SourcesSection(PluginConfigBase):
         default=5,
         ge=1,
         le=20,
-        description="每个来源最多取几个视频候选。",
+        description="每个指定来源（UP/关键词/分区/BV）最多取几个视频候选；热门会自动多取一些作为补位池。",
     )
     max_video_age_days: int = Field(
         default=30,
@@ -429,13 +438,13 @@ class SourcesSection(PluginConfigBase):
         default=6,
         ge=1,
         le=20,
-        description="每轮最多处理几个视频（越多越慢，也越容易触发风控）。",
+        description="每轮最多保留几个达标视频；某个视频有效评论不足时会跳过并继续找下一个。",
     )
     max_comments_per_video: int = Field(
         default=40,
         ge=10,
         le=100,
-        description="每个视频最多取多少条评论（含楼中楼）。",
+        description="过滤后每个视频至少要保留多少条有效评论；不足则跳过该视频，达标视频最多保留这么多条。",
     )
     include_sub_replies: bool = Field(
         default=True,
@@ -457,7 +466,7 @@ class SourcesSection(PluginConfigBase):
     min_reply_count: int = Field(
         default=50,
         ge=0,
-        description="视频评论数低于该值不取样。",
+        description="视频评论数必须大于该值才取样；设为 50 表示 51 条及以上才参与。",
     )
     min_comment_chars: int = Field(
         default=4,
@@ -470,6 +479,23 @@ class SourcesSection(PluginConfigBase):
         ge=20,
         le=300,
         description="评论长于该长度不取样。",
+    )
+    formulaic_filter: bool = Field(
+        default=True,
+        description="过滤B站评论区常见的公式化套话、捧场、打卡、玩梗、标题党、复读和无意义评论；默认开启，建议保持开启。",
+        json_schema_extra={"x-widget": "switch"},
+    )
+    reaction_keep_ratio: float = Field(
+        default=0.08,
+        ge=0,
+        le=0.3,
+        description="纯反应评论（草/笑死/awsl/666/太强了等）按比例少量保留，默认 8%；0 表示全部丢弃。",
+    )
+    ai_bot_threshold: int = Field(
+        default=60,
+        ge=20,
+        le=100,
+        description="账号特征 + 文本模板的 AI/Bot 风险分达到该值就丢弃；调低更严格。",
     )
     rate_limit_seconds: float = Field(
         default=1.5,
@@ -508,6 +534,11 @@ class TiebaSection(PluginConfigBase):
         description="启用贴吧来源。关闭后只从 B站 取样。",
         json_schema_extra={"x-widget": "switch"},
     )
+    quality_filter: bool = Field(
+        default=True,
+        description="过滤贴吧楼层里的公式化套话、玩梗、广告、AI 元讨论和无意义内容；默认开启。",
+        json_schema_extra={"x-widget": "switch"},
+    )
     bars: list[str] = Field(
         default_factory=lambda: ["生活吧"],
         description="要扫哪些吧，例如 [\"生活吧\", \"大学生吧\"]；会自动补“吧”。",
@@ -534,30 +565,30 @@ class TiebaSection(PluginConfigBase):
         default=0,
         ge=0,
         le=50,
-        description="贴吧总帖子数硬上限；0 表示不设上限，由 threads_per_bar 决定。",
+        description="本轮最多保留几个达标帖子；0 表示由 threads_per_bar × 吧数决定。",
     )
     threads_per_bar: int = Field(
         default=2,
         ge=0,
         le=10,
-        description="每个吧最多读几个帖子；0 表示不设每吧上限，只受 max_threads 限制。",
+        description="每个吧最多保留几个达标帖子；楼层不足的帖子会跳过并继续找下一个。",
     )
     thread_pages: int = Field(
         default=1,
         ge=1,
         le=5,
-        description="每个帖子最多翻几页楼层（每页约 30 楼）。",
+        description="每个帖子最多翻几页楼层（每页约 30 楼）；系统会按目标有效楼层数自动多翻 1-2 页作为过滤缓冲。",
     )
     min_replies: int = Field(
-        default=30,
+        default=50,
         ge=0,
-        description="帖子回复数低于该值不读。",
+        description="帖子回复数必须大于该值才读；设为 50 表示 51 条及以上才参与。",
     )
     max_posts_per_thread: int = Field(
         default=30,
         ge=5,
         le=100,
-        description="每个帖子最多取多少层喂给模型。",
+        description="过滤后每个帖子至少要保留多少条有效楼层；不足则跳过该帖。建议比帖子回复数下限低 5-10 层，否则过滤后很难达标。",
     )
     min_post_chars: int = Field(
         default=6,
@@ -735,6 +766,52 @@ class BilibiliCommentLearner(MaiBotPlugin):
             now_ts = now.timestamp()
             today = day_key(now)
             if not preview_only:
+                day_start = now.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+                today_imported = imported_since(self._state, day_start)
+                remaining_total = int(cfg.max_total_imported) - imported_count(self._state)
+                max_daily = int(cfg.max_expressions_per_day)
+                if max_daily > 0 and today_imported >= max_daily:
+                    logger.info(
+                        "跳过学习：今日配额已用完（%s/%s）", today_imported, cfg.max_expressions_per_day
+                    )
+                    return {
+                        "status": "quota_exhausted",
+                        "trigger": trigger,
+                        "dry_run": False,
+                        "error": "",
+                        "videos": 0,
+                        "bili_videos": 0,
+                        "tieba_threads": 0,
+                        "comments": 0,
+                        "candidates": 0,
+                        "imported": [],
+                        "skipped": 0,
+                        "failed_writes": 0,
+                        "warnings": [
+                            f"今日配额已用完（{today_imported}/{cfg.max_expressions_per_day}），本轮没有执行"
+                        ],
+                        "preview": [],
+                        "elapsed": 0.0,
+                    }
+                if remaining_total <= 0:
+                    logger.info("跳过学习：累计导入上限已达到（%s 条）", cfg.max_total_imported)
+                    return {
+                        "status": "limit_reached",
+                        "trigger": trigger,
+                        "dry_run": False,
+                        "error": "",
+                        "videos": 0,
+                        "bili_videos": 0,
+                        "tieba_threads": 0,
+                        "comments": 0,
+                        "candidates": 0,
+                        "imported": [],
+                        "skipped": 0,
+                        "failed_writes": 0,
+                        "warnings": [f"累计导入上限已达到（{cfg.max_total_imported} 条），本轮没有执行"],
+                        "preview": [],
+                        "elapsed": 0.0,
+                    }
                 if self._state.get("last_attempt_date") != today:
                     self._state["failures_today"] = 0
                     self._state["next_retry_at"] = 0
@@ -852,11 +929,11 @@ class BilibiliCommentLearner(MaiBotPlugin):
             client = self._build_client(bili_cfg)
             videos, discover_warnings = await self._discover_videos(client, bili_cfg)
             warnings.extend(discover_warnings)
-            bili_videos_count = len(videos)
             if videos:
                 bili_comments, bili_by_id, processed_videos, next_id, comment_warnings = await self._collect_comments(
                     client, videos, bili_cfg, start_id=next_id
                 )
+                bili_videos_count = len(processed_videos)
                 warnings.extend(comment_warnings)
                 comments.extend(bili_comments)
                 comments_by_id.update(bili_by_id)
@@ -881,7 +958,15 @@ class BilibiliCommentLearner(MaiBotPlugin):
             warnings.append("贴吧来源未启用")
 
         if not comments:
-            raise RuntimeError("B站和贴吧都没有取到可用文本（检查来源配置、过滤条件或风控）")
+            raise RuntimeError(
+                "B站和贴吧都没有取到可用文本（检查来源配置、过滤条件、每视频有效评论数或风控）"
+            )
+
+        # 高质量素材优先喂给模型：有个人经历/细节/观点的评论排前面。
+        comments.sort(
+            key=lambda item: (int(item.get("quality") or 0), int(item.get("like") or 0)),
+            reverse=True,
+        )
 
         candidates, extract_warnings = await self._extract_candidates(comments, comments_by_id, cfg)
         warnings.extend(extract_warnings)
@@ -962,8 +1047,13 @@ class BilibiliCommentLearner(MaiBotPlugin):
         warnings: list[str] = []
         groups: list[list[dict[str, Any]]] = []
         now_ts = time.time()
+        target_videos = max(1, int(cfg.max_videos_per_run))
+        # 达标视频可能少于候选视频，热门列表多取一些作为补位池。
+        pool_limit = max(target_videos * 3, target_videos + 5)
 
-        def filtered(raw: Iterable[dict[str, Any]], source: str) -> list[dict[str, Any]]:
+        def filtered(
+            raw: Iterable[dict[str, Any]], source: str, *, limit: int | None = None
+        ) -> list[dict[str, Any]]:
             result: list[dict[str, Any]] = []
             for video in raw:
                 bvid = str(video.get("bvid") or "").strip()
@@ -976,7 +1066,7 @@ class BilibiliCommentLearner(MaiBotPlugin):
                     ttl_days=self.config.plugin.seen_video_ttl_days,
                 ):
                     continue
-                if int(video.get("reply") or 0) < cfg.min_reply_count:
+                if not self._reply_count_ok(video.get("reply"), cfg.min_reply_count):
                     continue
                 if source.startswith(("search:", "up:")) and not self._age_ok(
                     int(video.get("pubdate") or 0), sources.max_video_age_days, now_ts
@@ -990,7 +1080,7 @@ class BilibiliCommentLearner(MaiBotPlugin):
                 ):
                     continue
                 result.append(video)
-            return result[: max(1, sources.per_source_limit)]
+            return result[: max(1, int(limit or sources.per_source_limit))]
 
         if sources.bvids:
             group: list[dict[str, Any]] = []
@@ -1029,13 +1119,31 @@ class BilibiliCommentLearner(MaiBotPlugin):
 
         if sources.popular_enabled:
             try:
-                raw = await asyncio.to_thread(client.popular, pages=sources.popular_pages)
-                groups.append(filtered(raw, "popular"))
+                popular_pages = max(
+                    int(sources.popular_pages), math.ceil(pool_limit / 20)
+                )
+                raw = await asyncio.to_thread(client.popular, pages=popular_pages)
+                groups.append(
+                    filtered(
+                        raw,
+                        "popular",
+                        limit=max(int(sources.per_source_limit), pool_limit),
+                    )
+                )
             except Exception as exc:  # noqa: BLE001
                 warnings.append(f"热门列表读取失败：{str(exc)[:80]}")
 
-        merged = merge_video_lists(groups, limit=max(1, cfg.max_videos_per_run))
+        merged = merge_video_lists(groups, limit=pool_limit)
         return merged, warnings
+
+    @staticmethod
+    def _reply_count_ok(reply_count: Any, min_reply_count: int) -> bool:
+        """视频评论数必须严格大于下限；50 表示只要 51 条及以上。"""
+        try:
+            count = int(reply_count or 0)
+        except (TypeError, ValueError):
+            count = 0
+        return count > max(0, int(min_reply_count))
 
     @staticmethod
     def _age_ok(pubdate: int, max_age_days: int, now_ts: float) -> bool:
@@ -1058,10 +1166,17 @@ class BilibiliCommentLearner(MaiBotPlugin):
         processed: list[str] = []
         warnings: list[str] = []
         seen_texts: set[str] = set()
+        seen_norms: list[str] = []
+        blocked_users: set[str] = set()
+        filter_stats: dict[str, int] = {}
         next_id = int(start_id)
-        pages = max(1, math.ceil(cfg.max_comments_per_video / 20))
+        target_videos = max(1, int(cfg.max_videos_per_run))
+        target_comments = max(1, int(cfg.max_comments_per_video))
+        pages = max(1, math.ceil(target_comments / 20))
 
         for video in videos:
+            if len(processed) >= target_videos:
+                break
             bvid = str(video.get("bvid") or "").strip()
             if not bvid:
                 continue
@@ -1080,7 +1195,11 @@ class BilibiliCommentLearner(MaiBotPlugin):
                     include_sub_replies=cfg.include_sub_replies,
                     sub_reply_roots=cfg.sub_reply_roots,
                     sub_replies_per_root=cfg.sub_replies_per_root,
+                    owner_mid=int(video.get("owner_mid") or 0),
                 )
+                before_seen = set(seen_texts)
+                before_norm_count = len(seen_norms)
+                before_blocked = set(blocked_users)
                 prepared, _next = prepare_comments(
                     raw_comments,
                     source=bvid,
@@ -1089,12 +1208,34 @@ class BilibiliCommentLearner(MaiBotPlugin):
                     max_chars=cfg.max_comment_chars,
                     banned_words=self.config.plugin.banned_words,
                     seen_keys=seen_texts,
+                    formulaic_filter=cfg.formulaic_filter,
+                    reaction_keep_ratio=cfg.reaction_keep_ratio,
+                    ai_bot_threshold=cfg.ai_bot_threshold,
+                    near_dedup=cfg.formulaic_filter,
+                    seen_norms=seen_norms,
+                    blocked_users=blocked_users,
+                    filter_stats=filter_stats,
                 )
-                prepared = prepared[: cfg.max_comments_per_video]
-                if not prepared:
-                    warnings.append(f"{bvid} 没有可用评论")
+                prepared.sort(
+                    key=lambda item: (
+                        int(item.get("quality") or 0),
+                        int(item.get("like") or 0),
+                    ),
+                    reverse=True,
+                )
+                prepared = prepared[:target_comments]
+                if len(prepared) < target_comments:
+                    # 这个视频不达标，不应把它的评论/去重记录带进后面的视频。
+                    seen_texts.clear()
+                    seen_texts.update(before_seen)
+                    del seen_norms[before_norm_count:]
+                    blocked_users.clear()
+                    blocked_users.update(before_blocked)
+                    warnings.append(
+                        f"{bvid} 有效评论 {len(prepared)}/{target_comments}，跳过并补下一个"
+                    )
                     continue
-                next_id = int(prepared[-1]["id"]) + 1
+                next_id = max(int(item["id"]) for item in prepared) + 1
                 for item in prepared:
                     comments.append(item)
                     comments_by_id[int(item["id"])] = str(item["text"])
@@ -1105,6 +1246,39 @@ class BilibiliCommentLearner(MaiBotPlugin):
                     break
             except Exception as exc:  # noqa: BLE001
                 warnings.append(f"{bvid} 处理失败：{type(exc).__name__}: {str(exc)[:100]}")
+        formulaic_dropped = sum(
+            count
+            for reason, count in filter_stats.items()
+            if reason.startswith(
+                (
+                    "公式化",
+                    "B站套话",
+                    "纯捧场",
+                    "泛化",
+                    "纯语气词",
+                    "纯反应",
+                    "打卡/前排",
+                    "无意义",
+                    "梗词",
+                    "纯数字",
+                    "只有标点",
+                    "近似复读",
+                    "链式过滤",
+                    "中文占比",
+                    "广告/引流",
+                    "辱骂/隐私",
+                    "AI元讨论",
+                    "AI/Bot",
+                    "Bot账号",
+                )
+            )
+        )
+        if formulaic_dropped:
+            warnings.append(f"B站质量过滤 {formulaic_dropped} 条（公式化/广告/AI/纯反应/复读等）")
+        if len(processed) < target_videos:
+            warnings.append(
+                f"B站达标视频 {len(processed)}/{target_videos}（每视频需 {target_comments} 条有效评论）"
+            )
         return comments, comments_by_id, processed, next_id, warnings
 
     # ---------------- 贴吧抓取 ----------------
@@ -1132,6 +1306,7 @@ class BilibiliCommentLearner(MaiBotPlugin):
         processed: list[str] = []
         warnings: list[str] = []
         seen_texts: set[str] = set()
+        filter_stats: dict[str, int] = {}
         seen_tids = {
             str(tid)
             for tid in (self._state.get("seen_threads") or {})
@@ -1140,20 +1315,32 @@ class BilibiliCommentLearner(MaiBotPlugin):
         next_id = int(start_id)
         bars = [str(item).strip() for item in cfg.bars if str(item).strip()][: max(1, int(cfg.max_bars))]
         per_bar = max(0, int(cfg.threads_per_bar))
-        total_cap = max(0, int(cfg.max_threads))
-        if total_cap <= 0:
-            total_cap = per_bar * len(bars) if per_bar > 0 else 4
-        if per_bar > 0 and total_cap < per_bar * len(bars):
+        total_target = max(0, int(cfg.max_threads))
+        if total_target <= 0:
+            total_target = per_bar * len(bars) if per_bar > 0 else 4
+        target_posts = max(1, int(cfg.max_posts_per_thread))
+        if target_posts >= max(1, int(cfg.min_replies)):
             warnings.append(
-                f"贴吧每吧配额 {per_bar} × {len(bars)} 个吧超过总上限 {total_cap}，后面的吧可能取不到"
+                f"每帖有效楼层目标 {target_posts} ≥ 帖子回复数下限 {cfg.min_replies}，"
+                "过滤后可能很难达标；建议目标比下限低 5-10 层"
             )
-        if total_cap > 12:
+        # 目标 30 层时过滤损耗较大，至少翻 3 页；更大目标继续增加，最多 5 页。
+        buffer_pages = 2 if target_posts >= 30 else 1
+        thread_pages = max(
+            int(cfg.thread_pages),
+            min(5, math.ceil(target_posts / 30) + buffer_pages),
+        )
+        if per_bar > 0 and total_target < per_bar * len(bars):
             warnings.append(
-                f"本轮计划读取 {total_cap} 个贴吧帖子（{len(bars)} 吧 × {per_bar}），请求和模型调用较多；可用 max_threads 限制"
+                f"贴吧每吧目标 {per_bar} × {len(bars)} 个吧超过总目标 {total_target}，后面的吧可能取不到"
+            )
+        if total_target > 12:
+            warnings.append(
+                f"本轮目标 {total_target} 个达标帖子（每帖需 {target_posts} 条有效楼层），请求和模型调用较多；可用 max_threads 限制"
             )
 
         for bar in bars:
-            remaining = total_cap - len(processed)
+            remaining = total_target - len(processed)
             if remaining <= 0:
                 break
             bar_limit = remaining if per_bar <= 0 else min(per_bar, remaining)
@@ -1173,21 +1360,22 @@ class BilibiliCommentLearner(MaiBotPlugin):
                 threads,
                 seen=seen_tids,
                 min_replies=cfg.min_replies,
-                max_threads=max(bar_limit * 4, bar_limit + 4),
+                max_threads=max(bar_limit * 6, bar_limit + 6),
                 keywords=cfg.keywords,
                 exclude_pattern=cfg.exclude_title,
                 bar=bar,
             )
             bar_processed = 0
             for thread in selected:
-                if bar_processed >= bar_limit or len(processed) >= total_cap:
+                if bar_processed >= bar_limit or len(processed) >= total_target:
                     break
                 tid = str(thread.get("tid") or "").strip()
                 if not tid:
                     continue
+                before_seen = set(seen_texts)
                 try:
                     data = await asyncio.to_thread(
-                        client.thread, tid, pages=cfg.thread_pages, limit=30
+                        client.thread, tid, pages=thread_pages, limit=30
                     )
                     posts = data.get("posts") or []
                     raw_posts = []
@@ -1196,7 +1384,13 @@ class BilibiliCommentLearner(MaiBotPlugin):
                             continue
                         if not cfg.include_op and post.get("is_op"):
                             continue
-                        raw_posts.append({"message": post.get("content") or "", "like": post.get("agree") or 0})
+                        raw_posts.append(
+                            {
+                                "message": post.get("content") or "",
+                                "like": post.get("agree") or 0,
+                                "user": post.get("author") or "",
+                            }
+                        )
                     prepared, _next = prepare_comments(
                         raw_posts,
                         source=f"tieba:{tid}",
@@ -1205,15 +1399,30 @@ class BilibiliCommentLearner(MaiBotPlugin):
                         max_chars=cfg.max_post_chars,
                         banned_words=self.config.plugin.banned_words,
                         seen_keys=seen_texts,
+                        formulaic_filter=cfg.quality_filter,
+                        reaction_keep_ratio=0.08,
+                        ai_bot_threshold=60,
+                        filter_stats=filter_stats,
                     )
-                    prepared = prepared[: cfg.max_posts_per_thread]
-                    seen_tids.add(tid)
-                    if not prepared:
-                        warnings.append(f"贴吧帖子 {tid} 没有可用楼层")
+                    prepared.sort(
+                        key=lambda item: (
+                            int(item.get("quality") or 0),
+                            int(item.get("like") or 0),
+                        ),
+                        reverse=True,
+                    )
+                    prepared = prepared[:target_posts]
+                    if len(prepared) < target_posts:
+                        seen_texts.clear()
+                        seen_texts.update(before_seen)
+                        warnings.append(
+                            f"贴吧帖子 {tid} 有效楼层 {len(prepared)}/{target_posts}，跳过并补下一个"
+                        )
                         continue
+                    seen_tids.add(tid)
                     processed.append(tid)
                     bar_processed += 1
-                    next_id = int(prepared[-1]["id"]) + 1
+                    next_id = max(int(item["id"]) for item in prepared) + 1
                     for item in prepared:
                         comments.append(item)
                         comments_by_id[int(item["id"])] = str(item["text"])
@@ -1221,8 +1430,17 @@ class BilibiliCommentLearner(MaiBotPlugin):
                     warnings.append(f"贴吧帖子 {tid} 读取失败：{str(exc)[:100]}")
                 except Exception as exc:  # noqa: BLE001
                     warnings.append(f"贴吧帖子 {tid} 处理失败：{type(exc).__name__}: {str(exc)[:100]}")
+        tieba_filtered = sum(filter_stats.values())
+        if tieba_filtered:
+            warnings.append(
+                f"贴吧质量过滤 {tieba_filtered} 条（长度/公式化/AI/广告等）"
+            )
+        if len(processed) < total_target:
+            warnings.append(
+                f"贴吧达标帖子 {len(processed)}/{total_target}（每帖需 {target_posts} 条有效楼层）"
+            )
         if not processed:
-            warnings.append("贴吧没有取到可读帖子（检查 bars、min_replies 或风控）")
+            warnings.append("贴吧没有取到达标帖子（检查 bars、min_replies、max_posts_per_thread 或风控）")
         return comments, comments_by_id, processed, next_id, warnings
 
     # ---------------- 模型抽取/复核 ----------------
@@ -1422,10 +1640,14 @@ class BilibiliCommentLearner(MaiBotPlugin):
             return [], len(candidates), f"已达到累计导入上限 {cfg.max_total_imported} 条"
         day_start = datetime.now(SHANGHAI).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
         today_imported = imported_since(self._state, day_start)
-        remaining_daily = int(cfg.max_expressions_per_day) - today_imported
-        if remaining_daily <= 0:
-            return [], len(candidates), f"今日配额已用完（{today_imported}/{cfg.max_expressions_per_day}）"
-        limit = min(remaining_daily, remaining_total)
+        max_daily = int(cfg.max_expressions_per_day)
+        if max_daily > 0:
+            remaining_daily = max_daily - today_imported
+            if remaining_daily <= 0:
+                return [], len(candidates), f"今日配额已用完（{today_imported}/{max_daily}）"
+            limit = min(remaining_daily, remaining_total)
+        else:
+            limit = remaining_total
         selected: list[dict[str, Any]] = []
         skipped = 0
         for candidate in candidates:
@@ -1671,6 +1893,9 @@ class BilibiliCommentLearner(MaiBotPlugin):
         status = str(result.get("status") or "")
         if status == "busy":
             return "⏳ 已有学习任务在运行，请稍后再试。"
+        if status in {"quota_exhausted", "limit_reached"}:
+            detail = (result.get("warnings") or [result.get("error") or ""])[0]
+            return f"⏸️ {detail}。明天额度会自动重置，或在「插件」里调大每日新增上限。"
         if status == "failed":
             return f"❌ 本轮学习失败：{str(result.get('error') or '未知错误')[:300]}"
 
@@ -1699,10 +1924,16 @@ class BilibiliCommentLearner(MaiBotPlugin):
             for item in imported[:10]:
                 lines.append(f"• {item.get('situation')} → {item.get('style')}")
             if not imported:
-                lines.append("这轮没有新增表达（可能都与现有库重复或未过复核）。")
+                lines.append("这轮没有新增表达（候选都被配额、去重或复核过滤）。")
         warnings = result.get("warnings") or []
         if warnings:
-            lines.append("⚠️ " + "；".join(str(item)[:80] for item in warnings[:3]))
+            ordered = sorted(
+                warnings,
+                key=lambda item: 0
+                if ("配额" in str(item) or "上限" in str(item) or "达标视频" in str(item))
+                else 1,
+            )
+            lines.append("⚠️ " + "；".join(str(item)[:80] for item in ordered[:3]))
         text = "\n".join(lines)
         return text[:1800]
 
@@ -1718,13 +1949,31 @@ class BilibiliCommentLearner(MaiBotPlugin):
             "📊 B站+贴吧学说话",
             f"开关：{'开' if cfg.enabled else '关'}｜自动：{'开' if cfg.daily_enabled else '关'}｜"
             f"写库：{'开' if cfg.write_to_db else '预览'}",
+            f"B站过滤：{'开' if self.config.sources.formulaic_filter else '关'}"
+            f"｜纯反应 {float(self.config.sources.reaction_keep_ratio):.0%}"
+            f"｜AI/Bot≥{int(self.config.sources.ai_bot_threshold)}分",
+            f"B站目标：{int(self.config.sources.max_videos_per_run)} 个达标视频"
+            f" × 每视频 {int(self.config.sources.max_comments_per_video)} 条有效评论",
             f"今日：{today}｜状态：{state.get('last_status') or '暂无'}｜"
             f"失败次数：{state.get('failures_today') or 0}",
         ]
+        tieba_cfg = self.config.tieba
+        tieba_bars = min(len(tieba_cfg.bars), int(tieba_cfg.max_bars))
+        tieba_target = int(tieba_cfg.max_threads) or (
+            int(tieba_cfg.threads_per_bar) * tieba_bars
+            if int(tieba_cfg.threads_per_bar) > 0
+            else 4
+        )
+        lines.append(
+            f"贴吧目标：{tieba_target} 个达标帖子"
+            f" × 每帖 {int(tieba_cfg.max_posts_per_thread)} 条有效楼层"
+        )
         if cfg.daily_enabled:
             lines.append(f"下次计划：{format_dt(next_run_at(now, state, cfg))}")
+        daily_limit = int(cfg.max_expressions_per_day)
+        daily_label = "不限" if daily_limit <= 0 else str(daily_limit)
         lines.append(
-            f"配额：今日 {today_imported}/{cfg.max_expressions_per_day}｜"
+            f"配额：今日 {today_imported}/{daily_label}｜"
             f"累计 {imported_total}/{cfg.max_total_imported}"
         )
         lines.append(

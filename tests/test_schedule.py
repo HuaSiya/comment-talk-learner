@@ -7,7 +7,7 @@ from _helpers import load_package
 
 load_package()
 
-from comment_talk_learner.schedule import (  # noqa: E402
+from local_bilibili_comment_learner.schedule import (  # noqa: E402
     SHANGHAI,
     day_key,
     jitter_seconds,
@@ -15,7 +15,7 @@ from comment_talk_learner.schedule import (  # noqa: E402
     scheduled_at,
     should_run,
 )
-from comment_talk_learner.state import default_state  # noqa: E402
+from local_bilibili_comment_learner.state import default_state  # noqa: E402
 
 
 def config(**overrides):

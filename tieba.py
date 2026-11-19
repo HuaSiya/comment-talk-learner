@@ -722,7 +722,7 @@ def select_threads(
         tid = str(thread.get("tid") or "")
         if not tid or tid in seen:
             continue
-        if int(thread.get("reply_num") or 0) < max(0, int(min_replies)):
+        if int(thread.get("reply_num") or 0) <= max(0, int(min_replies)):
             continue
         title = str(thread.get("title") or "")
         abstract = str(thread.get("abstract") or "")

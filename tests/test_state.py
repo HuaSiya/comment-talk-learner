@@ -9,7 +9,7 @@ from _helpers import load_package
 
 load_package()
 
-from comment_talk_learner.state import (  # noqa: E402
+from local_bilibili_comment_learner.state import (  # noqa: E402
     default_state,
     imported_count,
     imported_since,
@@ -37,6 +37,17 @@ class StateFileTests(unittest.TestCase):
             loaded = load_state(path)
             self.assertEqual(loaded["last_success_date"], "2026-11-13")
             self.assertEqual(imported_count(loaded), 1)
+
+    def test_float_timestamps_are_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory) / "state.json"
+            state = default_state()
+            state["last_attempt_at"] = 1794812699.5
+            state["last_success_at"] = 1794812700.25
+            save_state(path, state)
+            loaded = load_state(path)
+            self.assertAlmostEqual(loaded["last_attempt_at"], 1794812699.5)
+            self.assertAlmostEqual(loaded["last_success_at"], 1794812700.25)
 
     def test_corrupt_file_backed_up(self):
         with tempfile.TemporaryDirectory() as directory:
