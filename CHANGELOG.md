@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3
+
+- 适配 MaiBot 1.4.x：`host_application.max_version` 调整为 1.4.99。
+- SDK 最高支持放宽到 2.98.99，消除 SDK 2.23.0 的兼容警告。
+
 ## 0.3.2
 
 - **达标计数语义**：`max_videos_per_run` 只统计过滤后达到有效评论目标的 B站视频；`max_comments_per_video` 改为过滤后的有效评论目标/上限，不足则跳过并补下一个候选。
